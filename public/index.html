@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" integrity="sha384-B0vP5xmATw1+K9KRQjQERJvTumQW0nPEzvF6L/Z6nronJ3oUOFUFpCjEUQouq2+l" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/css/bootstrap-select.min.css">
+
+    <link rel="stylesheet" href="style.css">
+
+    <title>Ejercicio 2</title>
+  </head>
+  <body>
+    <div class="container-fluid mt-2">
+        <div class="row">
+            <div class="col-3">
+                <label for="nemos" class="bmd-label"><h2>Nemos</h2></label>
+
+                <select id="nemos" class="form-control W-100"  data-style="btn-warning" title="Seleccione...">
+                </select>
+
+            </div>
+            <div class="col-9">
+                <div class="row">
+                    <div class="card w-100">
+                        <div class="card-header">
+                          <h2>Precios</h2>
+                        </div>
+                        <div class="card-body">
+
+                            <div class="table-wrapper-scroll-y my-custom-scrollbar">
+                                <table class="table table-bordered table-sm">
+                                    <thead>
+                                      <tr>
+                                        <th scope="col">Precio</th>
+                                        <th scope="col">Fecha</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody id="precios">
+    
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        </div>
+                      </div>
+                </div>
+                <div class="row">
+                    <div class="card w-100">
+                        <div class="card-header">
+                          <h2>Gráfico</h2>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="add_chart"></canvas>
+                        </div>
+                      </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"    integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4="    crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.min.js" integrity="sha384-+YQ4JLhjyBLPDQt//I+STsc9iw4uQqACwlvpslubQzn4u2UU2UFM80nGisd026JF" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/js/bootstrap-select.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        const RUTA_API = 'http://localhost:9090';
+        let lineChart;
+
+        load_nemos();
+
+        $(function () {
+            $('select').selectpicker();
+        });
+
+        function load_nemos(){
+            $.ajax({
+                url:  RUTA_API+'/api/symbols/',
+                dataType: 'json',
+                type: 'GET',
+                success: function(data, textStatus, xhr) {
+                    if(xhr.status === 200){
+                        $.each(data.symbolsList, function(key, reg) {
+                            //console.log(reg.symbol);
+                            //console.log(reg.name);
+                            //console.log(reg.price);
+                            $("#nemos").append(`<option id="${reg.symbol}" value="${reg.symbol}">${reg.name}</option>`); 
+                        });
+                        $('#nemos').selectpicker('refresh');
+                    }else{
+                        console.log("error al traer la información desde symbols");
+                    }
+                },
+                error: function(data) {
+                    console.log('error ajax cargar symbols');
+                }
+            });
+        }
+
+        $("#nemos").change(function(){
+            let symbol = document.getElementById('nemos').value;
+            //console.log(symbol);
+            $.ajax({
+                url:  RUTA_API+'/api/historical/'+symbol,
+                type: 'GET',
+                contentType: "application/json; charset=utf-8",
+                success: function(data, textStatus, xhr) {
+
+                    var labels_chart = [];
+                    var data_chart = [];
+
+                    $("#precios").html("");
+
+                    if(xhr.status === 200){
+                        $.each(data[0].historical, function(key, reg) {
+                            //console.log(reg);
+                            //console.log(reg.close);
+                            //console.log(reg.date);
+
+                            labels_chart.push(reg.date);
+                            data_chart.push(reg.close);
+                                
+                            $("#precios").append(`<tr><td>${reg.close}</td><td>${reg.date}</td></tr>`); 
+                        });
+
+                        create_chart(symbol,labels_chart,data_chart);
+                        
+                    }else{
+                        console.log("error al traer la información desde historical");
+                    }
+                },
+                error: function(data) {
+                    console.log('error ajax cargar historical');
+                }
+            });
+        });
+
+        function create_chart(label,labels,data){
+
+            var ctx = document.getElementById("add_chart");
+
+            var chartData = {
+                labels: labels,
+                datasets: [{
+                    label: label,
+                    backgroundColor: 'rgb(255, 99, 132)',
+                    borderColor: 'rgb(255, 99, 132)',
+                    data: data,
+                }]
+            };
+
+            if (lineChart) {
+                lineChart.destroy();
+            }
+
+            lineChart = new Chart(ctx, {
+                type: 'line',
+                data: chartData,
+                options: {}
+            });
+        }
+
+
+    </script>
+
+    </body>
+</html>
